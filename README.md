@@ -1,3 +1,4 @@
-# Code Release Soon...
+# FedNE: Surrogate-Assisted Federated Neighbor Embedding for Dimensionality Reduction
 
-# Codes for FedNE: Surrogate-Assisted Federated Neighbor Embedding for Privacy-Preserving Dimensionality Reduction
+
+### Code Release Soon...
