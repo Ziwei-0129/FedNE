@@ -33,63 +33,22 @@ def create_folder(args, isCent=False):
         folder_name = f'{dataset_name}_k{args.k}_e{args.epochs}_bs{args.batch_size}_nBatches{args.n_batches}_lr{args.lr}_seed{args.seed}'
 
     else:
+        args.path = os.path.join(args.path, "Surrogate")
+            
+        if not os.path.exists(args.path):
+            os.makedirs(args.path)
+            
+        try:
+            args.client_percentage
+        except:
+            args.client_percentage = 1
 
-        if args.lowerbound:
-            args.path = os.path.join(args.path, "Lowerbound")
-            if not os.path.exists(args.path):
-                os.makedirs(args.path)
-
-            if args.iid == False and args.alpha is None:
-                folder_name = f'{dataset_name}_k{args.k}_r{args.rounds}_u{args.n_users}_ep{args.epochs_local}_bs{args.batch_size}_nBatches{args.n_batches}_lr{args.lr}'
-            elif args.iid:
-                folder_name = f'{dataset_name}_iid{args.iid}_k{args.k}_r{args.rounds}_u{args.n_users}_ep{args.epochs_local}_bs{args.batch_size}_nBatches{args.n_batches}_lr{args.lr}'
-            elif args.iid == False and args.alpha is not None:
-                folder_name = f'{dataset_name}_iid{args.iid}_alpha{args.alpha}_k{args.k}_r{args.rounds}_u{args.n_users}_ep{args.epochs_local}_bs{args.batch_size}_nBatches{args.n_batches}_lr{args.lr}'
-            else:
-                print("Wrong Fed dataset...")
-                exit(0)
-
-        elif args.fakedecent:
-            args.path = os.path.join(args.path, "Upperbound")
-            if not os.path.exists(args.path):
-                os.makedirs(args.path)
-
-            if args.iid == False and args.alpha is None:
-                folder_name = f'{dataset_name}_k{args.k}_r{args.rounds}_u{args.n_users}_ep{args.epochs_local}_bs{args.batch_size}_nBatches{args.n_batches}_lr{args.lr}'
-            elif args.iid:
-                folder_name = f'{dataset_name}_iid{args.iid}_k{args.k}_r{args.rounds}_u{args.n_users}_ep{args.epochs_local}_bs{args.batch_size}_nBatches{args.n_batches}_lr{args.lr}'
-            elif args.iid == False and args.alpha is not None:
-                folder_name = f'{dataset_name}_iid{args.iid}_alpha{args.alpha}_k{args.k}_r{args.rounds}_u{args.n_users}_ep{args.epochs_local}_bs{args.batch_size}_nBatches{args.n_batches}_lr{args.lr}'
-            else:
-                print("Wrong Fed dataset...")
-                exit(0)
-
-        elif args.local_train:
-            print('???')
-
-
-        elif args.surrogate:
-
-            if args.start_round == 0:
-                args.path = os.path.join(args.path, "Surrogate")
-            else:
-                args.path = os.path.join(args.path, "FedAvg")
-                
-            if not os.path.exists(args.path):
-                os.makedirs(args.path)
-
-            if args.iid is False and args.alpha is None:
-                folder_name = f'{dataset_name}_k{args.k}_r{args.rounds}_u{args.n_users}_ep{args.epochs_local}_bs{args.batch_size}_nBatches{args.n_batches}_lr{args.lr}_surrogate_startR{args.start_round}_seed{args.seed}'#_ftEp{args.epochs_finetune}'
-            elif args.iid:
-                folder_name = f'{dataset_name}_iid{args.iid}_k{args.k}_r{args.rounds}_u{args.n_users}_ep{args.epochs_local}_bs{args.batch_size}_nBatches{args.n_batches}_lr{args.lr}_surrogate_startR{args.start_round}_seed{args.seed}'#_ft_idx{args.ft_idx}'
-            elif args.iid is False and args.alpha is not None:
-                folder_name = f'{dataset_name}_iid{args.iid}_alpha{args.alpha}_k{args.k}_r{args.rounds}_u{args.n_users}_ep{args.epochs_local}_bs{args.batch_size}_nBatches{args.n_batches}_lr{args.lr}_surrogate_startR{args.start_round}_seed{args.seed}'#_ft_idx{args.ft_idx}'
-            else:
-                print("Wrong Fed dataset...")
-                exit(0)
-
+        if args.iid:
+            folder_name = f'{dataset_name}_iid{args.iid}_k{args.k}_r{args.rounds}_u{args.n_users}_ep{args.epochs_local}_bs{args.batch_size}_nBatches{args.n_batches}_lr{args.lr}_stepsize{args.step_size}_beta{args.beta}_dropout{args.client_percentage}_seed{args.seed}' 
+        elif args.iid is False and args.alpha is not None:
+            folder_name = f'{dataset_name}_iid{args.iid}_alpha{args.alpha}_k{args.k}_r{args.rounds}_u{args.n_users}_ep{args.epochs_local}_bs{args.batch_size}_nBatches{args.n_batches}_lr{args.lr}_stepsize{args.step_size}_beta{args.beta}_dropout{args.client_percentage}_seed{args.seed}'
         else:
-            print(("Failed to create folder..."))
+            print("Wrong Fed dataset...")
             exit(0)
 
 

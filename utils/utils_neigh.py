@@ -8,14 +8,11 @@ from sklearn.neighbors import NearestNeighbors
 
 
 def build_kNN_graph(dataset, n_nbrs):
-    # shapes = dataset.shape
-    dataset = dataset.reshape(dataset.shape[0], -1)
     shapes = dataset.shape
-    
     # create approximate NN search tree
     print(f"Computing approximate k-NN graph:   n_nbrs={n_nbrs}")
     annoy = AnnoyIndex(shapes[1], metric="euclidean")
-    for i, x in enumerate(dataset): 
+    for i, x in enumerate(dataset):
         annoy.add_item(i, x)
 
     annoy.build(50)
@@ -26,8 +23,6 @@ def build_kNN_graph(dataset, n_nbrs):
     for i in range(shapes[0]):
         neighs_, dists = annoy.get_nns_by_item(i, n_nbrs + 1, include_distances=True)
         neighs = neighs_[1:]
-
-        # min_dist_set.append(np.mean(dists[1:]))
         min_dist_set.append(np.min(dists[1:]))
 
         adj[i, neighs] = 1
@@ -187,70 +182,6 @@ def find_kNN(X, Y, k, type=None):
 
 
 
-def find_1NN_wRadius(X, Y, max_dist_set, type=None):
-    indices_1NN = []
-    if type == 'loo':
-        # Fit the model using data from Y
-        nbrs = NearestNeighbors(n_neighbors=2).fit(Y)
-        distances, indices = nbrs.kneighbors(X)
-        for i, (ind, dist) in enumerate(zip(indices, distances)):
-            if dist[1] < max_dist_set[ind[1]]:
-                indices_1NN.append([ind[1]])
-            else:
-                indices_1NN.append([])
-        return np.array(indices_1NN)
-    else:
-        # Fit the model using data from Y
-        nbrs = NearestNeighbors(n_neighbors=1).fit(Y)
-        distances, indices = nbrs.kneighbors(X)
-        for i, (ind, dist) in enumerate(zip(indices, distances)):
-            if dist[0] < max_dist_set[ind[0]]:
-                indices_1NN.append([ind[0]])
-            else:
-                indices_1NN.append([])
-        return np.array(indices_1NN)
-
-
-
-# def find_1NN_dist_wRadius(X, Y, max_dist_set, type=None):
-#     dists_1NN = []
-#     if type == 'loo':
-#         # Fit the model using data from Y
-#         nbrs = NearestNeighbors(n_neighbors=2).fit(Y)
-#         distances, indices = nbrs.kneighbors(X)
-#         for i, (ind, dist) in enumerate(zip(indices, distances)):
-#             if dist[1] < max_dist_set[ind[1]]:
-#                 dists_1NN.append([dist[1]])
-#             else:
-#                 dists_1NN.append([0.0])
-#         return np.array(dists_1NN)
-#     else:
-#         # Fit the model using data from Y
-#         nbrs = NearestNeighbors(n_neighbors=1).fit(Y)
-#         distances, indices = nbrs.kneighbors(X)
-#         for i, (ind, dist) in enumerate(zip(indices, distances)):
-#             if dist[0] < max_dist_set[ind[0]]:
-#                 dists_1NN.append([dist[0]])
-#             else:
-#                 dists_1NN.append([0.0])
-#         return np.array(dists_1NN)
-
-
-
-def find_1NN_dist(X, Y, type=None):
-    if type == 'loo':
-        # Fit the model using data from Y
-        nbrs = NearestNeighbors(n_neighbors=2).fit(Y)
-        distances, indices = nbrs.kneighbors(X)
-        return np.array([[dist[1]] for dist in distances])
-    else:
-        # Fit the model using data from Y
-        nbrs = NearestNeighbors(n_neighbors=1).fit(Y)
-        distances, indices = nbrs.kneighbors(X)
-        return np.array([[dist[0]] for dist in distances])
-
-
-
 def get_neighs_of_queryNN(local_images, dist_set, X_query_NN):
     n_local = len(local_images)
     n_query = len(X_query_NN)
@@ -326,37 +257,6 @@ def neighborhood_query_2d_v2(Z_query, Z_local, k, n_nbrs):
     return pos_inds_dict, neg_inds_dict, neigh_counts_dict
 
 
-
-
-# def neighborhood_query_2d_v2(Z_query, Z_local, k):
-#
-#     n_query = len(Z_query)
-#     n_local = len(Z_local)
-#
-#     pos_inds_dict = {'query': []}
-#     neg_inds_dict = {'query': []}
-#     neigh_counts_dict = {'query': []}
-#
-#     adj_local2query = np.zeros((n_local, n_query), dtype=np.int)
-#
-#     for i in range(n_local):
-#         dist_row = distance.cdist(Z_local[i:i + 1], Z_query, 'euclidean')[0]
-#         inds_topK = np.argsort(dist_row)[:k]
-#         adj_local2query[i, inds_topK] = 1
-#
-#     for j in range(n_query):
-#         neighs = list(np.where(adj_local2query[:,j] == 1)[0])
-#         pos_inds_dict['query'].append(neighs)
-#
-#     # Find negative samples within Z_local
-#     neg_inds_dict['query'] = [*range(n_local)]
-#
-#     # Find num of all neighs of z_q within Z_query
-#     _, graph_query, __ = build_kNN_graph(dataset=Z_query, n_nbrs=k)
-#     neigh_counts_dict['query'] = np.array([sum(row) for row in graph_query.data]).astype(np.int)
-#
-#     return pos_inds_dict, neg_inds_dict, neigh_counts_dict
-#
 
 
 

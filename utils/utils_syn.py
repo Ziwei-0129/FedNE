@@ -105,9 +105,9 @@ def sample_neighborhood_2D(center, range_x, range_y, step_size):
 
     # Determine start and end for each axis
     x_start = center[0] - range_x
-    x_end = center[0] + range_x + step_size  # Add step_size to include the end value
+    x_end = center[0] + range_x + step_size 
     y_start = center[1] - range_y
-    y_end = center[1] + range_y + step_size  # Add step_size to include the end value
+    y_end = center[1] + range_y + step_size 
 
     # Generate 1D coordinates
     x_coords = np.arange(x_start, x_end, step_size)
