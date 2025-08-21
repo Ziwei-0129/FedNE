@@ -35,31 +35,6 @@ class ConvNetwork_cifar(torch.nn.Module):
 
 
 
-# class FCNetwork_Cifar(torch.nn.Module):
-#     "Fully-connected network"
-#     def __init__(self, in_dim=3072, feat_dim=2):
-#         super(FCNetwork_Cifar, self).__init__()
-#         self.flatten = torch.nn.Flatten()
-#         self.linear_relu_stack = torch.nn.Sequential(
-#             torch.nn.Linear(in_dim, 1024),
-#             torch.nn.ReLU(),
-#             torch.nn.Linear(1024, 512),
-#             torch.nn.ReLU(),
-#             torch.nn.Linear(512, 512),
-#             torch.nn.ReLU(),
-#             torch.nn.Linear(512, 256),
-#             torch.nn.ReLU(),
-#             torch.nn.Linear(256, feat_dim),
-#         )
-
-#     def forward(self, x):
-#         x = self.flatten(x)
-#         logits = self.linear_relu_stack(x)
-#         return logits
-
-
-
-
 class FCNetwork_Cifar(torch.nn.Module):
     "Fully-connected network"
     def __init__(self, in_dim=512, feat_dim=2):
@@ -81,35 +56,13 @@ class FCNetwork_Cifar(torch.nn.Module):
         return logits
 
 
-
-class FCNetwork_mnist_(torch.nn.Module):
-    "Fully-connected network"
-    def __init__(self, in_dim=784, feat_dim=2):
-        super(FCNetwork_mnist_, self).__init__()
-        self.flatten = torch.nn.Flatten()
-        self.linear_relu_stack = torch.nn.Sequential(
-            torch.nn.Linear(in_dim, 100),
-            torch.nn.ReLU(),
-            torch.nn.Linear(100, 100),
-            torch.nn.ReLU(),
-            torch.nn.Linear(100, 100),
-            torch.nn.ReLU(),
-            torch.nn.Linear(100, feat_dim),
-        )
-
-    def forward(self, x):
-        x = self.flatten(x)
-        logits = self.linear_relu_stack(x)
-        return logits
-
-
-
     
-    
+
 class FCNetwork_mnist(torch.nn.Module):
     "Fully-connected network"
     def __init__(self, in_dim=784, feat_dim=2):
         super(FCNetwork_mnist, self).__init__()
+        # act = torch.nn.SiLU() #torch.nn.ReLU()
         self.flatten = torch.nn.Flatten()
         self.linear_relu_stack = torch.nn.Sequential(
             torch.nn.Linear(in_dim, 500),

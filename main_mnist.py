@@ -32,6 +32,7 @@ from utils.utils_train import (
 )
 
 
+
 # ----------------------------- Utilities -----------------------------
 
 def get_device(gpu_id: int | None) -> torch.device:
@@ -184,10 +185,11 @@ def main(args: Args):
 
     # Precompute per-client neighbor lists
     closest_neighbors_set = build_closest_neighbors(client_sets, args.k, args.n_users)
+    
 
     # ------------------------ Federated Training -------------------------
-    lr_decay_rounds = [int(0.3 * args.rounds), int(0.6 * args.rounds), int(0.9 * args.rounds)]
-    surrogate_start_round = int(np.floor(0.6 * args.rounds))
+    lr_decay_rounds = [int(0.2 * args.rounds), int(0.3 * args.rounds), int(0.6 * args.rounds)]
+    surrogate_start_round = int(np.floor(0.3 * args.rounds))
     
     txt_path = os.path.join(folder_path, "losses.txt")
     with open(txt_path, "w") as f:
@@ -197,6 +199,7 @@ def main(args: Args):
 
     global_weights = copy.deepcopy(encoder.state_dict())
     learning_rate = float(args.lr)
+    batch_size = args.batch_size
 
     # Track per-client attraction thresholds if used downstream
     client_attraction_dict = {j: 0.0 for j in range(args.n_users)}
@@ -221,6 +224,7 @@ def main(args: Args):
             # Use the current global encoder frozen to generate z for neg sampling ranges
             encoder.load_state_dict(global_weights)
             encoder.to(device).eval()
+            batch_size *= 2
 
             neg_samples_2d_dict: Dict[int, np.ndarray] = {}
             with torch.no_grad():
@@ -288,7 +292,7 @@ def main(args: Args):
                 k=args.k,
                 lr=learning_rate,
                 epochs_local=args.epochs_local,
-                batch_size=args.batch_size,
+                batch_size=batch_size,
                 n_batches=args.n_batches,
                 client_graph_info=client_affinity_set[cnt],
                 client_funct_dict=[None, surrogate_losses_rep_dict],
@@ -323,16 +327,11 @@ def main(args: Args):
         # Save checkpoints regularly and at the end
         ckpt_dir = os.path.join(folder_path, "saved_encoders")
         torch.save(encoder.state_dict(), os.path.join(ckpt_dir, "encoder_current.p"))
-        if r >= max(0, args.rounds - 150) and r % 2 == 0:
-            torch.save(encoder.state_dict(), os.path.join(ckpt_dir, f"encoder_r{r}.p"))
-        if r >= args.rounds - 3:
-            torch.save(encoder.state_dict(), os.path.join(ckpt_dir, f"encoder_r{r}.p"))
 
         # ----------------------- Global projection & test ----------------------
         encoder_glob = copy.deepcopy(encoder).eval().to(device)
         with torch.no_grad():
-            _ = encoder_glob(to_tensor(images_train, device))  # ensure forward works on device
-        plt_global_wClientLabels(folder_path, r, encoder_glob, client_sets, client_labels, os.path.join(folder_path, f"global_R{r}.png"))
+            _ = encoder_glob(to_tensor(images_train, device))
 
         test_loss, test_loss_pos, test_loss_neg = test_global(
             copy.deepcopy(encoder).eval().cpu(), images_train, args.test_k, args.test_bs, args.seed, graph=graph_glob
@@ -372,7 +371,7 @@ if __name__ == "__main__":
     parser.add_argument("--test_bs", type=int, default=1000)
 
     parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--path", type=str, default=os.path.join("Results", "mnist"))
+    parser.add_argument("--path", type=str, default=os.path.join("Results_mixup", "mnist"))
 
     parser.add_argument("--checkpoint", type=str, default=None)
 
