@@ -62,7 +62,6 @@ class FCNetwork_mnist(torch.nn.Module):
     "Fully-connected network"
     def __init__(self, in_dim=784, feat_dim=2):
         super(FCNetwork_mnist, self).__init__()
-        # act = torch.nn.SiLU() #torch.nn.ReLU()
         self.flatten = torch.nn.Flatten()
         self.linear_relu_stack = torch.nn.Sequential(
             torch.nn.Linear(in_dim, 500),
@@ -78,8 +77,6 @@ class FCNetwork_mnist(torch.nn.Module):
         x = self.flatten(x)
         logits = self.linear_relu_stack(x)
         return logits
-
-
 
 
 

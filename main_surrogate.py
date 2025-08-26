@@ -20,7 +20,6 @@ from Dataset.mnist_datasets import get_mnist_dataset
 from utils.misc_dir import create_folder, seed_everything
 from utils.networks import FCNetwork_mnist
 from utils.surrogate_finetune_optimized import update_client_surrogate_rep
-# from utils.surrogate_finetune import update_client_surrogate_rep
 from utils.utils_neigh import build_kNN_graph, find_kNN
 from utils.utils_syn import sample_neighborhood_2D
 from utils.utils_train import (
@@ -121,11 +120,7 @@ class Args:
     path: str
     checkpoint: str | None
     step_size: float
-    steps: int
-    n_intervals: int
     beta: float
-    pool_size: int
-    gpu_ids: List[int] | None
     gpu_id: int
     folder_path: str | None = None
 
@@ -149,7 +144,7 @@ def main(args: Args):
     rng = np.random.default_rng(args.seed)
 
     # Create output folder and device
-    folder_path = create_folder(args, isCent=False)
+    folder_path = create_folder(args, isSurr=True)
     args.folder_path = folder_path
     os.makedirs(os.path.join(folder_path, "saved_encoders"), exist_ok=True)
 
@@ -188,8 +183,8 @@ def main(args: Args):
     
 
     # ------------------------ Federated Training -------------------------
-    lr_decay_rounds = [int(0.2 * args.rounds), int(0.3 * args.rounds), int(0.6 * args.rounds)]
-    surrogate_start_round = int(np.floor(0.3 * args.rounds))
+    surrogate_start_round = 0
+    lr_decay_round = int(0.6 * args.rounds)
     
     txt_path = os.path.join(folder_path, "losses.txt")
     with open(txt_path, "w") as f:
@@ -199,32 +194,34 @@ def main(args: Args):
 
     global_weights = copy.deepcopy(encoder.state_dict())
     learning_rate = float(args.lr)
-    batch_size = args.batch_size
 
     # Track per-client attraction thresholds if used downstream
     client_attraction_dict = {j: 0.0 for j in range(args.n_users)}
-
-    # Surrogate regressor cache (persist across rounds)
-    surrogate_losses_rep_dict: Dict[int, nn.Module | None] = {c: None for c in range(args.n_users)}
+    surrogate_losses_rep_dict = None
+    
 
     for r in range(args.rounds):
         # Learning rate scheduling
-        if r in lr_decay_rounds:
+        if r == lr_decay_round:
             learning_rate *= 0.1
             print(f"[Scheduler] Round {r}: decayed LR --> {learning_rate:.6g}")
             
         # Build mixup augments and per-client kNN on concatenated local + mixed
-        rand = np.random.default_rng(int(time.time()))
+        rand = np.random.default_rng(int(r))
         client_affinity_set, client_mixed_sets = client_mixup_and_kNN_graph(
-            client_sets, closest_neighbors_set, int(args.k), args.n_users, rand #rng
+            client_sets, closest_neighbors_set, int(args.k), args.n_users, rand
         )
 
         # ----------------- Train repulsion surrogate (optional) -----------------
-        if r >= surrogate_start_round:
+        if r == surrogate_start_round:  
+            # Surrogate regressor cache (persist across rounds)
+            surrogate_losses_rep_dict: Dict[int, nn.Module | None] = {c: None for c in range(args.n_users)}
+            # learning_rate *= 0.01
+            
+        if r >= surrogate_start_round:            
             # Use the current global encoder frozen to generate z for neg sampling ranges
             encoder.load_state_dict(global_weights)
             encoder.to(device).eval()
-            batch_size *= 2
 
             neg_samples_2d_dict: Dict[int, np.ndarray] = {}
             with torch.no_grad():
@@ -245,6 +242,7 @@ def main(args: Args):
                         range_y=float(range_y),
                         step_size=float(args.step_size),
                     )
+                    
 
             # Train or fine-tune each client's surrogate regressor
             for client_ID in range(args.n_users):
@@ -253,11 +251,8 @@ def main(args: Args):
                 torch.save({k: v.cpu() for k, v in encoder.state_dict().items()}, state_buf)
 
                 regressor_buf = None
-                if surrogate_losses_rep_dict[client_ID] is not None:
-                    # If you later want incremental fine-tuning, you can pass a real buffer here
-                    regressor_buf = None
 
-                regressor_rep = update_client_surrogate_rep(
+                regressor_rep, buffer = update_client_surrogate_rep(
                     client_ID,
                     client_sets[client_ID],
                     neg_samples_2d_dict[client_ID],
@@ -265,7 +260,12 @@ def main(args: Args):
                     regressor_buf,
                     args.gpu_id,
                 )
-                surrogate_losses_rep_dict[client_ID] = regressor_rep.cpu()
+                buffer.seek(0)
+                state_dict = torch.load(buffer, map_location="cpu")
+                regressor_rep.load_state_dict(state_dict)
+            
+                surrogate_losses_rep_dict[client_ID] = regressor_rep
+
 
         # -------------------------- Client local updates ------------------------
         fig, ax = plt.subplots(nrows=nrows, ncols=ncols, figsize=(6, 6))
@@ -278,7 +278,7 @@ def main(args: Args):
             local_data = client_sets[cnt]
             local_labels = client_labels[cnt]
 
-            # Concat original + mixup for this client's local training epoch(s)
+            # Concat original + mixup for this client's local training
             clientdata_mixed = np.vstack([local_data, client_mixed_sets[cnt]])
 
             embedder, z_umap, mean_att_loss = clientUpdate(
@@ -292,7 +292,7 @@ def main(args: Args):
                 k=args.k,
                 lr=learning_rate,
                 epochs_local=args.epochs_local,
-                batch_size=batch_size,
+                batch_size=args.batch_size,
                 n_batches=args.n_batches,
                 client_graph_info=client_affinity_set[cnt],
                 client_funct_dict=[None, surrogate_losses_rep_dict],
@@ -332,6 +332,8 @@ def main(args: Args):
         encoder_glob = copy.deepcopy(encoder).eval().to(device)
         with torch.no_grad():
             _ = encoder_glob(to_tensor(images_train, device))
+            
+        plt_global_wClientLabels(folder_path, r, encoder_glob, client_sets, client_labels, os.path.join(folder_path, f"global_R{r}.png"))
 
         test_loss, test_loss_pos, test_loss_neg = test_global(
             copy.deepcopy(encoder).eval().cpu(), images_train, args.test_k, args.test_bs, args.seed, graph=graph_glob
@@ -370,19 +372,14 @@ if __name__ == "__main__":
     # Testing
     parser.add_argument("--test_bs", type=int, default=1000)
 
-    parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--path", type=str, default=os.path.join("Results_mixup", "mnist"))
+    parser.add_argument("--lr", type=float, default=1e-5)
+    parser.add_argument("--path", type=str, default=os.path.join("Results", "mnist"))
 
     parser.add_argument("--checkpoint", type=str, default=None)
 
     parser.add_argument("--step_size", type=float, default=0.3)
-    parser.add_argument("--steps", type=int, default=2)
-
-    parser.add_argument("--n_intervals", type=int, default=3)
     parser.add_argument("--beta", type=float, default=0.2)
 
-    parser.add_argument("--pool_size", type=int, default=10)
-    parser.add_argument("--gpu_ids", nargs="+", type=int)
     parser.add_argument("--gpu_id", type=int, default=0)
 
     cli = parser.parse_args()

@@ -167,7 +167,7 @@ def train_surrogate(
             
             
             feature_item = model(item)
-            feature_item = positional_encoding(feature_item, L=4) 
+            # feature_item = positional_encoding(feature_item, L=4) 
 
             " LOCAL losses "
             loss_att = criterion_attraction(model, item, neigh, loss_mode=None)
@@ -187,7 +187,7 @@ def train_surrogate(
                 client_func_ci_rep = surrogates_rep[key].to(device).eval()
                 surrogate_losses_rep = client_func_ci_rep(feature_item)[:, 0]
  
-                sum_loss_n += (surrogate_losses_rep * client_ratios[key] * 1.0)
+                sum_loss_n += (surrogate_losses_rep * client_ratios[key])
 
 
             sum_loss_p = sum_loss_p.mean()

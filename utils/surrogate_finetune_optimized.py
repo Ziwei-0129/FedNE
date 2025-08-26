@@ -1,5 +1,6 @@
 
 import time
+import io
 from dataclasses import dataclass
 from typing import List, Tuple, Optional
 
@@ -118,7 +119,7 @@ def train_surrogate_rep(
 
     X = torch.from_numpy(train_set_x)
     y = torch.from_numpy(train_set_y)
-    X = positional_encoding(X, L=cfg.pe_bands)
+    # X = positional_encoding(X, L=cfg.pe_bands)
     e_dim = int(X.shape[1])
 
     n = len(y)
@@ -188,7 +189,12 @@ def train_surrogate_rep(
 
     regressor.load_state_dict(best_state)
     regressor.eval().to("cpu")
-    return regressor
+    
+    # return as bytes (portable, device-agnostic)
+    buf = io.BytesIO()
+    torch.save(regressor.state_dict(), buf)
+    # reg_bytes = buf.getvalue()   
+    return regressor, buf
 
 
 def update_client_surrogate_rep(
@@ -223,5 +229,6 @@ def update_client_surrogate_rep(
     X_neg, y_neg = build_surrogate_dataset_neg(Z_query_negatives, Z_local)
 
     cfg = TrainConfig(pe_bands=pe_bands, seed=seed)
-    regressor = train_surrogate_rep(X_neg, y_neg, regressor_buffer=regressor_buffer_rep, device=device, cfg=cfg)
-    return regressor
+    regressor, buf = train_surrogate_rep(X_neg, y_neg, regressor_buffer=regressor_buffer_rep, device=device, cfg=cfg)
+    
+    return regressor, buf
