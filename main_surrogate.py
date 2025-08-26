@@ -333,7 +333,7 @@ def main(args: Args):
         with torch.no_grad():
             _ = encoder_glob(to_tensor(images_train, device))
             
-        plt_global_wClientLabels(folder_path, r, encoder_glob, client_sets, client_labels, os.path.join(folder_path, f"global_R{r}.png"))
+        # plt_global_wClientLabels(folder_path, r, encoder_glob, client_sets, client_labels, os.path.join(folder_path, f"global_R{r}.png"))
 
         test_loss, test_loss_pos, test_loss_neg = test_global(
             copy.deepcopy(encoder).eval().cpu(), images_train, args.test_k, args.test_bs, args.seed, graph=graph_glob
@@ -386,5 +386,6 @@ if __name__ == "__main__":
 
     # ensure output root exists
     os.makedirs(cli.path, exist_ok=True)
+
 
     main(Args(**vars(cli)))
